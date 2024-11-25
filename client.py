@@ -57,7 +57,7 @@ class ClientScreen(Frame):
         self.quantityEntries = {}
         self.colorVars = {}
 
-        for i, item in enumerate(items, start=1):
+        for i, item in enumerate(self.items, start=1):
             # The items' checkboxes
             itemVar = BooleanVar()
             checkbox = Checkbutton(self, text=item, variable=itemVar)
