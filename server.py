@@ -1,7 +1,6 @@
 from multiprocessing.connection import Client
 from socket import *
 from threading import *
-from re import *
 
 
 class ClientThread(Thread):
