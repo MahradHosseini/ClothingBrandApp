@@ -22,12 +22,12 @@ class ClientThread(Thread):
                 lineData = line.strip().split(";")
                 if username == lineData[0] and password == lineData[1]:
                     # Login approval format: loginsuccess;username;role
-                    serverMsg = f"loginsuccess;{username};{lineData[2]}".encode()
+                    serverMsg = f"loginsuccess;{username};{lineData[2]}"
                     authenticationSuccessful = True
                     break
 
         if not authenticationSuccessful:
-            serverMsg = "loginfailure".encode()
+            serverMsg = "loginfailure"
 
         return serverMsg
 
@@ -60,8 +60,7 @@ class ClientThread(Thread):
                 unavailableItems.append(f"{lineData[1]} ({color})")
 
         if unavailableItems:
-            serverMsg = "availabilityerror" + ";".join(unavailableItems)
-            serverMsg.encode()
+            serverMsg = "availabilityerror;" + ";".join(unavailableItems)
         else:
             updatedItems = []
             totalOrderCost = 0
@@ -81,7 +80,7 @@ class ClientThread(Thread):
                 # Purchase Op Format: purchase;store;customerName;quantity-itemID-color,quantity-itemID-color...
                 file.write(clientMsg + "\n")
 
-            serverMsg = f"purchasesuccess;{totalOrderCost}".encode()
+            serverMsg = f"purchasesuccess;{totalOrderCost}"
 
         return serverMsg
 
@@ -119,7 +118,7 @@ class ClientThread(Thread):
                 break
 
         if not validReturn:
-            serverMsg = "returnerror".encode()
+            serverMsg = "returnerror"
         else:
             with open("items.txt", "r") as itemsFile:
                 items = itemsFile.readlines()
@@ -141,7 +140,7 @@ class ClientThread(Thread):
             with open("operations.txt", "a") as operationsFile:
                 operationsFile.write(clientMsg + "\n")
 
-            serverMsg = "returnsuccess".encode()
+            serverMsg = "returnsuccess"
             return serverMsg
 
     @staticmethod
@@ -178,7 +177,7 @@ class ClientThread(Thread):
                     itemNames.append(lineData[1])
                     break
 
-        serverMsg = f"report1;{";".join(itemNames)}".encode()
+        serverMsg = f"report1;{";".join(itemNames)}"
         return serverMsg
 
     @staticmethod
@@ -200,7 +199,7 @@ class ClientThread(Thread):
         maxOperations = max(storeOperations.values())
         topStores = [store for store, count in storeOperations.items() if count == maxOperations]
 
-        serverMsg = f"report2;{";".join(topStores)}".encode()
+        serverMsg = f"report2;{";".join(topStores)}"
         return serverMsg
 
     @staticmethod
@@ -236,7 +235,7 @@ class ClientThread(Thread):
                     elif operationType == "return":
                         totalIncome -= quantity * itemPrice
 
-        serverMsg = f"report3;{totalIncome}".encode()
+        serverMsg = f"report3;{totalIncome}"
         return serverMsg
 
     @staticmethod
@@ -268,7 +267,7 @@ class ClientThread(Thread):
         if any(returnsCount.values()):
             maxReturns = max(returnsCount.values())
             mostReturnedColors = [color for color, count in returnsCount.items() if count == maxReturns]
-            serverMsg = f"report4;{";".join(mostReturnedColors)}".encode()
+            serverMsg = f"report4;{";".join(mostReturnedColors)}"
             return serverMsg
 
     def run(self):
@@ -304,17 +303,18 @@ class ClientThread(Thread):
                     serverMsg = self.reportFour()
 
                 else:
-                    serverMsg = "unknowncommand".encode()
+                    serverMsg = "unknowncommand"
                     print(f"Unknown command received: {clientMsg}")
 
                 print(serverMsg)
-                self.clientSocket.send(serverMsg)
+                self.clientSocket.send(serverMsg.encode())
 
         except Exception as e:
             print(f"Error in client thread: {e}")
 
         finally:
             self.clientSocket.close()
+            print(f"Connection closed with {self.clientAddress}")
 
 if __name__ == "__main__":
     HOST = "127.0.0.1"

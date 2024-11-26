@@ -8,6 +8,15 @@ class ClientScreen(Frame):
         Frame.__init__(self)
         self.username = None
         self.clientSocket = clientSocket
+
+        width, height = 600, 300
+        screenWidth, screenHeight = self.master.winfo_screenwidth(), self.master.winfo_screenheight()
+
+        x = (screenWidth - width) // 2
+        y = (screenHeight - height) // 2
+
+        self.master.geometry(f"{width}x{height}+{x}+{y}")
+
         self.showLoginScreen()
 
     def showLoginScreen(self):
@@ -19,15 +28,18 @@ class ClientScreen(Frame):
 
         self.usernameEntry = Entry(self)
         self.usernameEntry.grid(row=0, column=1)
+        self.usernameEntry.bind("<Return>",lambda event: self.handleLogin())
 
         self.passwordLabel = Label(self, text="Password:")
         self.passwordLabel.grid(row=1, column=0)
 
-        self.passwordEntry = Entry(self)
+        self.passwordEntry = Entry(self, show="*")
         self.passwordEntry.grid(row=1, column=1)
+        self.passwordEntry.bind("<Return>",lambda event: self.handleLogin())
 
         self.loginButton = Button(self, text="Login", command=self.handleLogin)
         self.loginButton.grid(row=2, column=0, columnspan=2)
+
 
     def handleLogin(self):
         clientMsg = f"login;{self.usernameEntry.get()};{self.passwordEntry.get()}".encode()
@@ -96,7 +108,7 @@ class ClientScreen(Frame):
         returnButton = Button(self, text="Return", command=self.handleReturn)
         returnButton.grid(row=len(self.items) + 2, column=2, pady=10)
 
-        closeButton = Button(self, text="Close", command=self.destroy)
+        closeButton = Button(self, text="Close", command=self.master.destroy)
         closeButton.grid(row=len(self.items) + 2, column=3, pady=10)
 
 
@@ -123,6 +135,7 @@ class ClientScreen(Frame):
             self.clientSocket.send(clientMsg.encode())
         else:
             messagebox.showerror("No Items Selected", "No items selected")
+            return
 
         serverMsg = self.clientSocket.recv(1024).decode().split(";")
 
@@ -138,11 +151,11 @@ class ClientScreen(Frame):
         pass
 
 
-def connect_to_server(host, port):
+def connectToServer(host, port):
     try:
-        client_socket = socket(AF_INET, SOCK_STREAM)
-        client_socket.connect((host, port))
-        return client_socket
+        clientSocket = socket(AF_INET, SOCK_STREAM)
+        clientSocket.connect((host, port))
+        return clientSocket
     except Exception as e:
         messagebox.showerror("Error", f"Failed to connect to server: {e}")
         return None
@@ -152,14 +165,14 @@ if __name__ == "__main__":
     HOST = '127.0.0.1'
     PORT = 5000
 
-    client_socket = connect_to_server(HOST, PORT)
-    if client_socket:
+    clientSocket = connectToServer(HOST, PORT)
+    if clientSocket:
         try:
             # Wait for the server's initial response
-            initial_response = client_socket.recv(1024).decode()
-            if initial_response == 'connectionsuccess':
+            initialResponse = clientSocket.recv(1024).decode()
+            if initialResponse == 'connectionsuccess':
                 # Launch the client GUI
-                window = ClientScreen(client_socket)
+                window = ClientScreen(clientSocket)
                 window.mainloop()
             else:
                 messagebox.showerror("Error", "Connection Error: Unexpected server response")
@@ -167,4 +180,4 @@ if __name__ == "__main__":
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
             # Close the socket when done
-            client_socket.close()
+            clientSocket.close()
