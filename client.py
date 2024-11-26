@@ -155,9 +155,15 @@ class ClientScreen(Frame):
             messagebox.showerror("Availability Error", f"Following items not available:\n" + "\n".join(serverMsg[1:]))
             
     def handleReturn(self):
+        # TODO: Implement the function that handles the functionality of the "Return" button in Store Panel
         pass
 
     def showAnalystPanel(self):
+        # TODO: Implement the function that renders the Analyst Panel
+        pass
+
+    def handleCreateReport(self):
+        # TODO: Implement the function that handles the functionality of the "Create" button in Analyst Panel
         pass
 
 

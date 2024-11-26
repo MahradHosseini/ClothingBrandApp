@@ -90,6 +90,8 @@ class ClientThread(Thread):
 
     @staticmethod
     def returnCommand(clientMsg):
+        # TODO: Check the functionality of this method after implementing the "handleReturn()" in client.py
+
         # Format: return;store;customerName;quantity-itemID-color,quantity-itemID-color...
         # Items.txt format: itemID;itemName;color;price;stockAvailable
         # Operations.txt format: purchase;store;customerName;quantity-itemID-color,... or return;store;customerName;quantity-itemID-color,...
@@ -151,6 +153,8 @@ class ClientThread(Thread):
 
     @staticmethod
     def reportOne():
+        # TODO: Check the functionality of this method after implementing the "handleCreateReport()" and "showAnalystPanel()" in client.py
+
         # Most bought item/s?
         with fileLock:
             with open("operations.txt", "r") as operationsFile:
@@ -190,6 +194,8 @@ class ClientThread(Thread):
 
     @staticmethod
     def reportTwo():
+        # TODO: Check the functionality of this method after implementing the "handleCreateReport()" and "showAnalystPanel()" in client.py
+
         # Store/s with the highest number of operations
         with fileLock:
             with open("operations.txt", "r") as operationsFile:
@@ -213,6 +219,8 @@ class ClientThread(Thread):
 
     @staticmethod
     def reportThree():
+        # TODO: Check the functionality of this method after implementing the "handleCreateReport()" and "showAnalystPanel()" in client.py
+
         # Total generated income
         with fileLock:
             with open("operations.txt", "r") as operationsFile:
@@ -250,6 +258,8 @@ class ClientThread(Thread):
 
     @staticmethod
     def reportFour():
+        # TODO: Check the functionality of this method after implementing the "handleCreateReport()" and "showAnalystPanel()" in client.py
+
         # Most returned color for Basic T-shirt
         with fileLock:
             with open("operations.txt", "r") as operationsFile:
