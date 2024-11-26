@@ -1,6 +1,8 @@
 from socket import *
 from threading import *
+from threading import RLock
 
+fileLock = RLock()
 
 class ClientThread(Thread):
     def __init__(self, clientSocket, clientAddress):
@@ -17,14 +19,15 @@ class ClientThread(Thread):
         password = clientMsg.split(";")[2]
         authenticationSuccessful = False
 
-        with open("users.txt", "r") as file:
-            for line in file:
-                lineData = line.strip().split(";")
-                if username == lineData[0] and password == lineData[1]:
-                    # Login approval format: loginsuccess;username;role
-                    serverMsg = f"loginsuccess;{username};{lineData[2]}"
-                    authenticationSuccessful = True
-                    break
+        with fileLock:
+            with open("users.txt", "r") as file:
+                for line in file:
+                    lineData = line.strip().split(";")
+                    if username == lineData[0] and password == lineData[1]:
+                        # Login approval format: loginsuccess;username;role
+                        serverMsg = f"loginsuccess;{username};{lineData[2]}"
+                        authenticationSuccessful = True
+                        break
 
         if not authenticationSuccessful:
             serverMsg = "loginfailure"
@@ -35,52 +38,53 @@ class ClientThread(Thread):
     def purchaseCommand(clientMsg):
         # Purchase format: purchase;store;total;quantity-itemID-color, quantity-itemID-color...
         # Items.txt format: itemID;itemName;color;price;stockAvailable
-        with open("items.txt", "r") as file:
-            order = clientMsg.split(";")[-1]
-            suborders = order.split(",")
-            availableItems = []
-            unavailableItems = []
+        with fileLock:
+            with open("items.txt", "r") as file:
+                order = clientMsg.split(";")[-1]
+                suborders = order.split(",")
+                availableItems = []
+                unavailableItems = []
 
-            lines = file.readlines()
+                lines = file.readlines()
 
-        for suborder in suborders:
-            suborderAvailable = False
-            quantity, itemID, color = suborder.split("-")
-            quantity = int(quantity)
+            for suborder in suborders:
+                suborderAvailable = False
+                quantity, itemID, color = suborder.split("-")
+                quantity = int(quantity)
 
-            for line in lines:
-                lineData = line.split(";")
+                for line in lines:
+                    lineData = line.split(";")
 
-                if itemID == lineData[0] and color == lineData[2] and quantity <= int(lineData[4]):
-                    suborderAvailable = True
-                    availableItems.append((lineData, quantity))
-                    break
+                    if itemID == lineData[0] and color == lineData[2] and quantity <= int(lineData[4]):
+                        suborderAvailable = True
+                        availableItems.append((lineData, quantity))
+                        break
 
-            if not suborderAvailable:
-                unavailableItems.append(f"{lineData[1]} ({color})")
+                if not suborderAvailable:
+                    unavailableItems.append(f"{lineData[1]} ({color})")
 
-        if unavailableItems:
-            serverMsg = "availabilityerror;" + ";".join(unavailableItems)
-        else:
-            updatedItems = []
-            totalOrderCost = 0
+            if unavailableItems:
+                serverMsg = "availabilityerror;" + ";".join(unavailableItems)
+            else:
+                updatedItems = []
+                totalOrderCost = 0
 
-            for line in lines:
-                lineData = line.strip().split(";")
-                for item, qty in availableItems:
-                    if lineData[0] == item[0] and lineData[2] == item[2]:
-                        lineData[4] = str(int(lineData[4]) - qty)
-                        totalOrderCost += qty * int(item[3])
-                updatedItems.append(";".join(lineData))
+                for line in lines:
+                    lineData = line.strip().split(";")
+                    for item, qty in availableItems:
+                        if lineData[0] == item[0] and lineData[2] == item[2]:
+                            lineData[4] = str(int(lineData[4]) - qty)
+                            totalOrderCost += qty * int(item[3])
+                    updatedItems.append(";".join(lineData))
 
-            with open("items.txt", "w") as file:
-                file.write("\n".join(updatedItems) + "\n")
+                with open("items.txt", "w") as file:
+                    file.write("\n".join(updatedItems) + "\n")
 
-            with open("operations.txt", "a") as file:
-                # Purchase Op Format: purchase;store;customerName;quantity-itemID-color,quantity-itemID-color...
-                file.write(clientMsg + "\n")
+                with open("operations.txt", "a") as file:
+                    # Purchase Op Format: purchase;store;customerName;quantity-itemID-color,quantity-itemID-color...
+                    file.write(clientMsg + "\n")
 
-            serverMsg = f"purchasesuccess;{totalOrderCost}"
+                serverMsg = f"purchasesuccess;{totalOrderCost}"
 
         return serverMsg
 
@@ -94,97 +98,102 @@ class ClientThread(Thread):
         customerName = returnReq[2]
         returnItems = returnReq[3].split(",")
 
-        with open("operations.txt", "r") as operationsFile:
-            operations = operationsFile.readlines()
+        with fileLock:
+            with open("operations.txt", "r") as operationsFile:
+                operations = operationsFile.readlines()
 
-        validReturn = True
-        for item in returnItems:
-            quantity, itemID, color = item.split("-")
-            quantity = int(quantity)
+            validReturn = True
+            for item in returnItems:
+                quantity, itemID, color = item.split("-")
+                quantity = int(quantity)
 
-            itemFound = False
-            for operation in operations:
-                if(
-                    operation.startswith("purchase") and
-                    store in operation and
-                    customerName in operation and
-                    f"{quantity}-{itemID}-{color}" in operation
-                ):
-                    itemFound = True
+                itemFound = False
+                for operation in operations:
+                    if(
+                        operation.startswith("purchase") and
+                        store in operation and
+                        customerName in operation and
+                        f"{quantity}-{itemID}-{color}" in operation
+                    ):
+                        itemFound = True
+                        break
+
+                if not itemFound:
+                    validReturn = False
                     break
 
-            if not itemFound:
-                validReturn = False
-                break
+            if not validReturn:
+                serverMsg = "returnerror"
+            else:
+                with open("items.txt", "r") as itemsFile:
+                    items = itemsFile.readlines()
 
-        if not validReturn:
-            serverMsg = "returnerror"
-        else:
-            with open("items.txt", "r") as itemsFile:
-                items = itemsFile.readlines()
+                updatedItems = []
+                for line in items:
+                    itemData = line.strip().split(";")
+                    for item in returnItems:
+                        quantity, itemID, color = item.split("-")
+                        quantity = int(quantity)
 
-            updatedItems = []
-            for line in items:
-                itemData = line.strip().split(";")
-                for item in returnItems:
-                    quantity, itemID, color = item.split("-")
-                    quantity = int(quantity)
+                        if itemID == itemData[0] and color == itemData[2]:
+                            itemData[4] = str(int(itemData[4]) + quantity)
+                    updatedItems.append(";".join(itemData))
 
-                    if itemID == itemData[0] and color == itemData[2]:
-                        itemData[4] = str(int(itemData[4]) + quantity)
-                updatedItems.append(";".join(itemData))
+                with open("items.txt", "w") as itemsFile:
+                    itemsFile.write("\n".join(updatedItems) + "\n")
 
-            with open("items.txt", "w") as itemsFile:
-                itemsFile.write("\n".join(updatedItems) + "\n")
+                with open("operations.txt", "a") as operationsFile:
+                    operationsFile.write(clientMsg + "\n")
 
-            with open("operations.txt", "a") as operationsFile:
-                operationsFile.write(clientMsg + "\n")
+                serverMsg = "returnsuccess"
 
-            serverMsg = "returnsuccess"
-            return serverMsg
+        return serverMsg
 
     @staticmethod
     def reportOne():
         # Most bought item/s?
-        with open("operations.txt", "r") as operationsFile:
-            operations = operationsFile.readlines()
+        with fileLock:
+            with open("operations.txt", "r") as operationsFile:
+                operations = operationsFile.readlines()
 
-        purchaseCounts = {}
+            purchaseCounts = {}
 
-        for operation in operations:
-            if operation.startswith("purchase"):
-                purchaseItems = operation.strip().split(";")[3].split(",")
-                for item in purchaseItems:
-                    quantity, itemID, _ = item.split("-")
-                    quantity = int(quantity)
+            for operation in operations:
+                if operation.startswith("purchase"):
+                    purchaseItems = operation.strip().split(";")[3].split(",")
+                    for item in purchaseItems:
+                        quantity, itemID, _ = item.split("-")
+                        quantity = int(quantity)
 
-                    if itemID not in purchaseCounts:
-                        purchaseCounts[itemID] = 0
-                    purchaseCounts[itemID] += quantity
+                        if itemID not in purchaseCounts:
+                            purchaseCounts[itemID] = 0
+                        purchaseCounts[itemID] += quantity
 
 
-        maxCount = max(purchaseCounts.values())
-        mostBoughtItems = [itemID for itemID, count in purchaseCounts.items() if count == maxCount]
+            maxCount = max(purchaseCounts.values())
+            mostBoughtItems = [itemID for itemID, count in purchaseCounts.items() if count == maxCount]
 
-        with open("items.txt", "r") as itemsFile:
-            itemsData = itemsFile.readlines()
+            with open("items.txt", "r") as itemsFile:
+                itemsData = itemsFile.readlines()
 
-        itemNames = []
-        for itemID in mostBoughtItems:
-            for line in itemsData:
-                lineData = line.strip().split(";")
-                if itemID == lineData[0]:
-                    itemNames.append(lineData[1])
-                    break
+            itemNames = []
+            for itemID in mostBoughtItems:
+                for line in itemsData:
+                    lineData = line.strip().split(";")
+                    if itemID == lineData[0]:
+                        itemNames.append(lineData[1])
+                        break
 
-        serverMsg = f"report1;{";".join(itemNames)}"
+            serverMsg = f"report1;{";".join(itemNames)}"
+
         return serverMsg
 
     @staticmethod
     def reportTwo():
         # Store/s with the highest number of operations
-        with open("operations.txt", "r") as operationsFile:
-            operations = operationsFile.readlines()
+        with fileLock:
+            with open("operations.txt", "r") as operationsFile:
+                operations = operationsFile.readlines()
 
         storeOperations = {}
 
@@ -205,10 +214,11 @@ class ClientThread(Thread):
     @staticmethod
     def reportThree():
         # Total generated income
-        with open("operations.txt", "r") as operationsFile:
-            operations = operationsFile.readlines()
-        with open("items.txt", "r") as itemsFile:
-            items = itemsFile.readlines()
+        with fileLock:
+            with open("operations.txt", "r") as operationsFile:
+                operations = operationsFile.readlines()
+            with open("items.txt", "r") as itemsFile:
+                items = itemsFile.readlines()
 
         priceLookup = {}
         for item in items:
@@ -241,11 +251,11 @@ class ClientThread(Thread):
     @staticmethod
     def reportFour():
         # Most returned color for Basic T-shirt
-
-        with open("operations.txt", "r") as operationsFile:
-            operations = operationsFile.readlines()
-        with open("items.txt", "r") as itemsFile:
-            items = itemsFile.readlines()
+        with fileLock:
+            with open("operations.txt", "r") as operationsFile:
+                operations = operationsFile.readlines()
+            with open("items.txt", "r") as itemsFile:
+                items = itemsFile.readlines()
 
         for item in items:
             itemData = item.strip().split(";")
@@ -268,7 +278,7 @@ class ClientThread(Thread):
             maxReturns = max(returnsCount.values())
             mostReturnedColors = [color for color, count in returnsCount.items() if count == maxReturns]
             serverMsg = f"report4;{";".join(mostReturnedColors)}"
-            return serverMsg
+        return serverMsg
 
     def run(self):
         try:
