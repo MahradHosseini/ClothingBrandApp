@@ -2,12 +2,11 @@ from socket import *
 from tkinter import *
 from tkinter import messagebox
 
-from bokeh.layouts import column
-
 
 class ClientScreen(Frame):
     def __init__(self, clientSocket):
         Frame.__init__(self)
+        self.username = None
         self.clientSocket = clientSocket
         self.showLoginScreen()
 
@@ -16,19 +15,19 @@ class ClientScreen(Frame):
         self.pack()
 
         self.usernameLabel = Label(self, text="Username:")
-        self.usernameLabel.pack(side=LEFT)
+        self.usernameLabel.grid(row=0, column=0)
 
         self.usernameEntry = Entry(self)
-        self.usernameEntry.pack(side=RIGHT)
+        self.usernameEntry.grid(row=0, column=1)
 
         self.passwordLabel = Label(self, text="Password:")
-        self.passwordLabel.pack(side=LEFT)
+        self.passwordLabel.grid(row=1, column=0)
 
         self.passwordEntry = Entry(self)
-        self.passwordEntry.pack(side=RIGHT)
+        self.passwordEntry.grid(row=1, column=1)
 
         self.loginButton = Button(self, text="Login", command=self.handleLogin)
-        self.loginButton.pack(side=CENTER)
+        self.loginButton.grid(row=2, column=0, columnspan=2)
 
     def handleLogin(self):
         clientMsg = f"login;{self.usernameEntry.get()};{self.passwordEntry.get()}".encode()
@@ -39,6 +38,7 @@ class ClientScreen(Frame):
         if serverMsg == "loginfailure":
             messagebox.showerror("Login failure", "Login failure")
         else:
+            self.username = serverMsg.split(";")[1]
             role = serverMsg.split(";")[-1]
             if role == "store":
                 self.showStorePanel()
@@ -46,6 +46,11 @@ class ClientScreen(Frame):
                 self.showAnalystPanel()
 
     def showStorePanel(self):
+        for widget in self.winfo_children():
+            widget.destroy()
+
+        self.master.title("Store Panel")
+
         self.itemsLabel = Label(self, text="Items", font=("Arial", 20))
         self.itemsLabel.grid(row=0, column=0, columnspan=2)
 
@@ -88,7 +93,7 @@ class ClientScreen(Frame):
         purchaseButton = Button(self, text="Purchase", command=self.handlePurchase)
         purchaseButton.grid(row=len(self.items) + 2, column=1, pady=10)
 
-        returnButton = Button(self, text="Return", command=self.handleReturning)
+        returnButton = Button(self, text="Return", command=self.handleReturn)
         returnButton.grid(row=len(self.items) + 2, column=2, pady=10)
 
         closeButton = Button(self, text="Close", command=self.destroy)
@@ -109,10 +114,13 @@ class ClientScreen(Frame):
         selectedItems = self.getSelectedItems()
 
         if selectedItems:
-            store = self.usernameEntry.get()
+            store = self.username
             customerName = self.customerEntry.get()
-            clientMsg = f"purchase;{store};{customerName};{','.join(selectedItems)}".encode()
-            clientSocket.send(clientMsg)
+            clientMsg = f"purchase;{store};{customerName};{','.join(selectedItems)}"
+            print(clientMsg)
+
+
+            self.clientSocket.send(clientMsg.encode())
         else:
             messagebox.showerror("No Items Selected", "No items selected")
 
@@ -123,19 +131,40 @@ class ClientScreen(Frame):
         else:
             messagebox.showerror("Availability Error", f"Following items not available:\n" + "\n".join(serverMsg[1:]))
             
+    def handleReturn(self):
+        pass
 
     def showAnalystPanel(self):
         pass
 
 
+def connect_to_server(host, port):
+    try:
+        client_socket = socket(AF_INET, SOCK_STREAM)
+        client_socket.connect((host, port))
+        return client_socket
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to connect to server: {e}")
+        return None
+
+
 if __name__ == "__main__":
     HOST = '127.0.0.1'
     PORT = 5000
-    clientSocket = socket(AF_INET, SOCK_STREAM)
-    clientSocket.connect((HOST, PORT))
 
-    if clientSocket.recv(1024).decode() == 'connectionsuccess':
-        window = ClientScreen(clientSocket)
-        window.mainloop()
-    else:
-        messagebox.showerror("Error", "Connection Error")
+    client_socket = connect_to_server(HOST, PORT)
+    if client_socket:
+        try:
+            # Wait for the server's initial response
+            initial_response = client_socket.recv(1024).decode()
+            if initial_response == 'connectionsuccess':
+                # Launch the client GUI
+                window = ClientScreen(client_socket)
+                window.mainloop()
+            else:
+                messagebox.showerror("Error", "Connection Error: Unexpected server response")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+        finally:
+            # Close the socket when done
+            client_socket.close()

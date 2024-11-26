@@ -1,4 +1,3 @@
-from multiprocessing.connection import Client
 from socket import *
 from threading import *
 
@@ -33,7 +32,7 @@ class ClientThread(Thread):
         return serverMsg
 
     @staticmethod
-    def purcahseCommand(clientMsg):
+    def purchaseCommand(clientMsg):
         # Purchase format: purchase;store;total;quantity-itemID-color, quantity-itemID-color...
         # Items.txt format: itemID;itemName;color;price;stockAvailable
         with open("items.txt", "r") as file:
@@ -50,7 +49,7 @@ class ClientThread(Thread):
             quantity = int(quantity)
 
             for line in lines:
-                lineData = line.strip().split(";")
+                lineData = line.split(";")
 
                 if itemID == lineData[0] and color == lineData[2] and quantity <= int(lineData[4]):
                     suborderAvailable = True
@@ -272,56 +271,71 @@ class ClientThread(Thread):
             serverMsg = f"report4;{";".join(mostReturnedColors)}".encode()
             return serverMsg
 
-
     def run(self):
-        serverMsg = "connectionsuccess".encode()
-        self.clientSocket.send(serverMsg)
-        clientMsg = self.clientSocket.recv(1024).decode()
-
-        while clientMsg != "close":
-
-            command = clientMsg.split(";")[0]
-
-            if command == "login":
-                serverMsg = self.loginCommand(clientMsg)
-
-            elif command == "purchase":
-                serverMsg = self.purcahseCommand(clientMsg)
-
-            elif command == "return":
-                serverMsg = self.returnCommand(clientMsg)
-
-            elif command == "report1":
-                serverMsg = self.reportOne()
-
-            elif command == "report2":
-                serverMsg = self.reportTwo()
-
-            elif command == "report3":
-                serverMsg = self.reportThree()
-
-            elif command == "report4":
-                serverMsg = self.reportFour()
-
-            else:
-                print("unknown command")
-
+        try:
+            serverMsg = "connectionsuccess".encode()
             self.clientSocket.send(serverMsg)
+            while True:
+                clientMsg = self.clientSocket.recv(1024).decode()
+                if not clientMsg or clientMsg == "close":
+                    break
 
-        self.clientSocket.close()
+                command = clientMsg.split(";")[0]
+
+                if command == "login":
+                    serverMsg = self.loginCommand(clientMsg)
+
+                elif command == "purchase":
+                    serverMsg = self.purchaseCommand(clientMsg)
+
+                elif command == "return":
+                    serverMsg = self.returnCommand(clientMsg)
+
+                elif command == "report1":
+                    serverMsg = self.reportOne()
+
+                elif command == "report2":
+                    serverMsg = self.reportTwo()
+
+                elif command == "report3":
+                    serverMsg = self.reportThree()
+
+                elif command == "report4":
+                    serverMsg = self.reportFour()
+
+                else:
+                    serverMsg = "unknowncommand".encode()
+                    print(f"Unknown command received: {clientMsg}")
+
+                print(serverMsg)
+                self.clientSocket.send(serverMsg)
+
+        except Exception as e:
+            print(f"Error in client thread: {e}")
+
+        finally:
+            self.clientSocket.close()
 
 if __name__ == "__main__":
     HOST = "127.0.0.1"
     PORT = 5000
 
     serverSocket = socket(AF_INET, SOCK_STREAM)
-    serverSocket.bind((HOST, PORT))
     serverSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+    serverSocket.bind((HOST, PORT))
+    serverSocket.listen()
 
     print("Server is running....")
 
-    while True:
-        serverSocket.listen()
-        clientSocket, clientAddress = serverSocket.accept()
-        newClient = Client(clientSocket, clientAddress)
-        newClient.start()
+    try:
+        while True:
+            clientSocket, clientAddress = serverSocket.accept()
+            print(f"Connection established with {clientAddress}")
+            newClient = ClientThread(clientSocket, clientAddress)
+            newClient.start()
+
+    except KeyboardInterrupt:
+        print("Server is shutting down...")
+
+    finally:
+        serverSocket.close()
