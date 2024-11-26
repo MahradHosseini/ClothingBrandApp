@@ -2,7 +2,6 @@ from socket import *
 from tkinter import *
 from tkinter import messagebox
 
-
 class ClientScreen(Frame):
     def __init__(self, clientSocket):
         Frame.__init__(self)
@@ -17,28 +16,39 @@ class ClientScreen(Frame):
 
         self.master.geometry(f"{width}x{height}+{x}+{y}")
 
+        self.master.rowconfigure(0, weight=1)
+        self.master.columnconfigure(0, weight=1)
+
         self.showLoginScreen()
 
     def showLoginScreen(self):
         self.master.title("Login")
-        self.pack()
+        self.pack(fill=BOTH, expand=True)
 
-        self.usernameLabel = Label(self, text="Username:")
-        self.usernameLabel.grid(row=0, column=0)
+        for i in range(3):
+            self.rowconfigure(i, weight=1)
+        for j in range(2):
+            self.columnconfigure(j, weight=1)
+
+        usernameLabel = Label(self, text="Username:")
+        usernameLabel.grid(row=0, column=0)
 
         self.usernameEntry = Entry(self)
         self.usernameEntry.grid(row=0, column=1)
         self.usernameEntry.bind("<Return>",lambda event: self.handleLogin())
 
-        self.passwordLabel = Label(self, text="Password:")
-        self.passwordLabel.grid(row=1, column=0)
+        passwordLabel = Label(self, text="Password:")
+        passwordLabel.grid(row=1, column=0)
 
         self.passwordEntry = Entry(self, show="*")
         self.passwordEntry.grid(row=1, column=1)
         self.passwordEntry.bind("<Return>",lambda event: self.handleLogin())
 
-        self.loginButton = Button(self, text="Login", command=self.handleLogin)
-        self.loginButton.grid(row=2, column=0, columnspan=2)
+        loginButton = Button(self, text="Login", command=self.handleLogin)
+        loginButton.grid(row=2, column=0, columnspan=2)
+
+        self.master.minsize(400,300)
+        self.master.maxsize(800,400)
 
 
     def handleLogin(self):
@@ -63,8 +73,8 @@ class ClientScreen(Frame):
 
         self.master.title("Store Panel")
 
-        self.itemsLabel = Label(self, text="Items", font=("Arial", 20))
-        self.itemsLabel.grid(row=0, column=0, columnspan=2)
+        itemsLabel = Label(self, text="Items", font=("Arial", 20))
+        itemsLabel.grid(row=0, column=0, columnspan=2)
 
         self.items = ["Basic T-shirt", "Leather Jacket", "Robe of the Weave",
                  "Plaid Shirt", "D4C Graphic T-shirt",
