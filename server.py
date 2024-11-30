@@ -288,7 +288,7 @@ class ClientThread(Thread):
             mostReturnedColors = [color for color, count in returnsCount.items() if count == maxReturns]
             serverMsg = f"report4;{';'.join(mostReturnedColors)}"
         else:
-            serverMsg = "report4;"
+            serverMsg = "report4;No sales"
 
         return serverMsg
 
