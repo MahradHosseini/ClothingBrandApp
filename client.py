@@ -2,9 +2,11 @@ from socket import *
 from tkinter import *
 from tkinter import messagebox
 
+
 class ClientScreen(Frame):
     def __init__(self, clientSocket):
         Frame.__init__(self)
+        self.pack()
         self.username = None
         self.clientSocket = clientSocket
 
@@ -35,21 +37,20 @@ class ClientScreen(Frame):
 
         self.usernameEntry = Entry(self)
         self.usernameEntry.grid(row=0, column=1)
-        self.usernameEntry.bind("<Return>",lambda event: self.handleLogin())
+        self.usernameEntry.bind("<Return>", lambda event: self.handleLogin())
 
         passwordLabel = Label(self, text="Password:")
         passwordLabel.grid(row=1, column=0)
 
         self.passwordEntry = Entry(self, show="*")
         self.passwordEntry.grid(row=1, column=1)
-        self.passwordEntry.bind("<Return>",lambda event: self.handleLogin())
+        self.passwordEntry.bind("<Return>", lambda event: self.handleLogin())
 
-        loginButton = Button(self, text="Login", command=self.handleLogin)
+        loginButton = Button(self, text="Login", command=self.handleLogin, width=10, height=1)
         loginButton.grid(row=2, column=0, columnspan=2)
 
-        self.master.minsize(400,300)
-        self.master.maxsize(800,400)
-
+        self.master.minsize(400, 300)
+        self.master.maxsize(800, 400)
 
     def handleLogin(self):
         clientMsg = f"login;{self.usernameEntry.get()};{self.passwordEntry.get()}".encode()
@@ -77,8 +78,8 @@ class ClientScreen(Frame):
         itemsLabel.grid(row=0, column=0, columnspan=2)
 
         self.items = ["Basic T-shirt", "Leather Jacket", "Robe of the Weave",
-                 "Plaid Shirt", "D4C Graphic T-shirt",
-                 "Denim Jeans", "Hodd-Toward Designer Shorts"]
+                      "Plaid Shirt", "D4C Graphic T-shirt",
+                      "Denim Jeans", "Hodd-Toward Designer Shorts"]
 
         self.itemVars = {}
         self.quantityEntries = {}
@@ -107,20 +108,19 @@ class ClientScreen(Frame):
             self.colorVars[item] = colorVar
 
         customerLabel = Label(self, text="Customer Name:")
-        customerLabel.grid(row=len(self.items) + 1, column=0, columnspan=2, sticky=W)
+        customerLabel.grid(row=len(self.items) + 1, column=0, columnspan=2, padx=10, sticky=EW)
 
         self.customerEntry = Entry(self, width=10)
         self.customerEntry.grid(row=len(self.items) + 1, column=1, columnspan=2, sticky=W)
 
-        purchaseButton = Button(self, text="Purchase", command=self.handlePurchase)
-        purchaseButton.grid(row=len(self.items) + 2, column=1, pady=10)
+        purchaseButton = Button(self, text="Purchase", command=self.handlePurchase, width=10, height=1)
+        purchaseButton.grid(row=len(self.items) + 2, column=1, pady=10, padx=10)
 
-        returnButton = Button(self, text="Return", command=self.handleReturn)
-        returnButton.grid(row=len(self.items) + 2, column=2, pady=10)
+        returnButton = Button(self, text="Return", command=self.handleReturn, width=10, height=1)
+        returnButton.grid(row=len(self.items) + 2, column=2, pady=10, padx=10)
 
-        closeButton = Button(self, text="Close", command=self.master.destroy)
-        closeButton.grid(row=len(self.items) + 2, column=3, pady=10)
-
+        closeButton = Button(self, text="Close", command=self.master.destroy, width=10, height=1)
+        closeButton.grid(row=len(self.items) + 2, column=3, pady=10, padx=10)
 
     def getSelectedItems(self):
         selectedItems = []
@@ -141,7 +141,6 @@ class ClientScreen(Frame):
             clientMsg = f"purchase;{store};{customerName};{','.join(selectedItems)}"
             print(clientMsg)
 
-
             self.clientSocket.send(clientMsg.encode())
         else:
             messagebox.showerror("No Items Selected", "No items selected")
@@ -153,18 +152,77 @@ class ClientScreen(Frame):
             messagebox.showinfo("Purchase successful", f"Purchase with total cost of {serverMsg[1]} was successful.")
         else:
             messagebox.showerror("Availability Error", f"Following items not available:\n" + "\n".join(serverMsg[1:]))
-            
+
     def handleReturn(self):
         # TODO: Implement the function that handles the functionality of the "Return" button in Store Panel
         pass
 
     def showAnalystPanel(self):
-        # TODO: Implement the function that renders the Analyst Panel
-        pass
+        for widget in self.winfo_children():
+            widget.destroy()
+
+        self.master.title("Analyst Panel")
+
+        self.frame1 = Frame(self)
+        self.frame1.pack(padx=5, pady=5)
+
+        self.Label1 = Label(self.frame1, text="Reports", font=("Arial", 20))
+        self.Label1.pack(padx=5, pady=10)
+        # Creating the report options
+        report_options = [
+            "What is the most bought item?",
+            "Which store has the highest number of operations?",
+            "What is the total generated income of the store?",
+            "What is the most returned color for the basic T-shirt?"
+        ]
+        self.chosenReport = StringVar()
+        self.chosenReport.set(report_options[0])
+
+        for report in report_options:
+            aButton = Radiobutton(self.frame1, text=report, variable=self.chosenReport, value=report)
+            aButton.pack(padx=5, pady=5,anchor="w")
+
+        # Creating the buttons
+        self.frame2 = Frame(self)
+        self.frame2.pack(padx=5, pady=5)
+
+        self.CreateButton = Button(self.frame2, text="Create", command=self.handleCreateReport, width=10, height=1)
+        self.CreateButton.pack(padx=40, pady=20, side=LEFT)
+
+        self.CloseButton = Button(self.frame2, text="Close", command=self.master.destroy, width=10, height=1)
+        self.CloseButton.pack(padx=40, pady=20, side=LEFT)
 
     def handleCreateReport(self):
-        # TODO: Implement the function that handles the functionality of the "Create" button in Analyst Panel
-        pass
+        # Initialize the list to store the report lines
+        report_lines = []
+
+        # Check which report option is selected and send the msg to server
+        if self.chosenReport.get() == "What is the most bought item?":
+            clientMsg = "report1"
+            self.clientSocket.send(clientMsg.encode())
+            serverMsg = self.clientSocket.recv(1024).decode()
+            report = serverMsg.split(";")[1:]
+
+        elif self.chosenReport.get() == "Which store has the highest number of operations?":
+            clientMsg = "report2"
+            self.clientSocket.send(clientMsg.encode())
+            serverMsg = self.clientSocket.recv(1024).decode()
+            report = serverMsg.split(";")[1:]
+
+        elif self.chosenReport.get() == "What is the total generated income of the store?":
+            clientMsg = "report3"
+            self.clientSocket.send(clientMsg.encode())
+            serverMsg = self.clientSocket.recv(1024).decode()
+            report = serverMsg.split(";")[1:]
+
+        else:
+            clientMsg = "report4"
+            self.clientSocket.send(clientMsg.encode())
+            serverMsg = self.clientSocket.recv(1024).decode()
+            report = serverMsg.split(";")[1:]
+
+        # Display the message box with the gathered report lines
+        messagebox.showinfo("Report", ", ".join(report))
 
 
 def connectToServer(host, port):

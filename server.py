@@ -23,6 +23,7 @@ class ClientThread(Thread):
             with open("users.txt", "r") as file:
                 for line in file:
                     lineData = line.strip().split(";")
+                    print(lineData)
                     if username == lineData[0] and password == lineData[1]:
                         # Login approval format: loginsuccess;username;role
                         serverMsg = f"loginsuccess;{username};{lineData[2]}"
@@ -187,8 +188,7 @@ class ClientThread(Thread):
                     if itemID == lineData[0]:
                         itemNames.append(lineData[1])
                         break
-
-            serverMsg = f"report1;{";".join(itemNames)}"
+            serverMsg = f"report1;{';'.join(itemNames)}"
 
         return serverMsg
 
@@ -213,8 +213,7 @@ class ClientThread(Thread):
 
         maxOperations = max(storeOperations.values())
         topStores = [store for store, count in storeOperations.items() if count == maxOperations]
-
-        serverMsg = f"report2;{";".join(topStores)}"
+        serverMsg = f"report2;{';'.join(topStores)}"
         return serverMsg
 
     @staticmethod
@@ -287,7 +286,10 @@ class ClientThread(Thread):
         if any(returnsCount.values()):
             maxReturns = max(returnsCount.values())
             mostReturnedColors = [color for color, count in returnsCount.items() if count == maxReturns]
-            serverMsg = f"report4;{";".join(mostReturnedColors)}"
+            serverMsg = f"report4;{';'.join(mostReturnedColors)}"
+        else:
+            serverMsg = "report4;"
+
         return serverMsg
 
     def run(self):
