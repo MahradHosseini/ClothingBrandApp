@@ -33,21 +33,21 @@ class ClientScreen(Frame):
             self.columnconfigure(j, weight=1)
 
         usernameLabel = Label(self, text="Username:")
-        usernameLabel.grid(row=0, column=0)
+        usernameLabel.grid(row=0, column=0,sticky="se")
 
         self.usernameEntry = Entry(self)
-        self.usernameEntry.grid(row=0, column=1)
+        self.usernameEntry.grid(row=0, column=1,sticky="sw",padx=8)
         self.usernameEntry.bind("<Return>", lambda event: self.handleLogin())
 
         passwordLabel = Label(self, text="Password:")
-        passwordLabel.grid(row=1, column=0)
+        passwordLabel.grid(row=1, column=0,sticky="e")
 
         self.passwordEntry = Entry(self, show="*")
-        self.passwordEntry.grid(row=1, column=1)
+        self.passwordEntry.grid(row=1, column=1,sticky="w",padx=8)
         self.passwordEntry.bind("<Return>", lambda event: self.handleLogin())
 
         loginButton = Button(self, text="Login", command=self.handleLogin, width=10, height=1)
-        loginButton.grid(row=2, column=0, columnspan=2)
+        loginButton.grid(row=2, column=0, columnspan=2,sticky="n")
 
         self.master.minsize(400, 300)
         self.master.maxsize(800, 400)
@@ -96,28 +96,30 @@ class ClientScreen(Frame):
             quantityLabel = Label(self, text="Quantity:")
             quantityLabel.grid(row=i, column=1, sticky=E, padx=10)
             quantityEntry = Entry(self, width=10)
-            quantityEntry.grid(row=i, column=2, sticky=W)
+            quantityEntry.grid(row=i, column=2, sticky=W,padx=10)
             self.quantityEntries[item] = quantityEntry
 
             # Color buttons
+            colorLabel = Label(self, text="Color:")
+            colorLabel.grid(row=i, column=3, sticky="w")
             colorVar = StringVar(value="red")
             redRadio = Radiobutton(self, text="Red", variable=colorVar, value="red")
             blackRadio = Radiobutton(self, text="Black", variable=colorVar, value="black")
-            redRadio.grid(row=i, column=3, sticky=W)
-            blackRadio.grid(row=i, column=4, sticky=W)
+            redRadio.grid(row=i, column=3,sticky="e")
+            blackRadio.grid(row=i, column=4,padx=10)
             self.colorVars[item] = colorVar
 
         customerLabel = Label(self, text="Customer Name:")
-        customerLabel.grid(row=len(self.items) + 1, column=0, columnspan=2, padx=10, sticky=EW)
+        customerLabel.grid(row=len(self.items) + 1, column=0, columnspan=2, padx=10,sticky="e")
 
-        self.customerEntry = Entry(self, width=10)
-        self.customerEntry.grid(row=len(self.items) + 1, column=1, columnspan=2, sticky=W)
+        self.customerEntry = Entry(self, width=15)
+        self.customerEntry.grid(row=len(self.items) + 1, column=1, columnspan=2, sticky="e")
 
         purchaseButton = Button(self, text="Purchase", command=self.handlePurchase, width=10, height=1)
-        purchaseButton.grid(row=len(self.items) + 2, column=1, pady=10, padx=10)
+        purchaseButton.grid(row=len(self.items) + 2, column=0, pady=10, padx=10,sticky="e")
 
         returnButton = Button(self, text="Return", command=self.handleReturn, width=10, height=1)
-        returnButton.grid(row=len(self.items) + 2, column=2, pady=10, padx=10)
+        returnButton.grid(row=len(self.items) + 2, column=1, pady=10, padx=10)
 
         closeButton = Button(self, text="Close", command=self.master.destroy, width=10, height=1)
         closeButton.grid(row=len(self.items) + 2, column=3, pady=10, padx=10)
@@ -154,8 +156,24 @@ class ClientScreen(Frame):
             messagebox.showerror("Availability Error", f"Following items not available:\n" + "\n".join(serverMsg[1:]))
 
     def handleReturn(self):
-        # TODO: Implement the function that handles the functionality of the "Return" button in Store Panel
-        pass
+        selectedItems = self.getSelectedItems()
+
+        if selectedItems:
+            store = self.username
+            customerName = self.customerEntry.get()
+            clientMsg = f"return;{store};{customerName};{';'.join(selectedItems)}"
+            self.clientSocket.send(clientMsg.encode())
+        else:
+            messagebox.showerror("No Items Selected", "No items selected")
+            return
+
+        serverMsg = self.clientSocket.recv(1024).decode().split(";")
+
+        if serverMsg[0] == "returnsuccess":
+            messagebox.showinfo("Message", "Returned Successfully")
+        else:
+            messagebox.showerror("Message", "unsuccessful operation – please recheck the items")
+
 
     def showAnalystPanel(self):
         for widget in self.winfo_children():
@@ -180,9 +198,9 @@ class ClientScreen(Frame):
 
         for report in report_options:
             aButton = Radiobutton(self.frame1, text=report, variable=self.chosenReport, value=report)
-            aButton.pack(padx=5, pady=5,anchor="w")
+            aButton.pack(padx=5, pady=5, anchor="w")
 
-        # Creating the buttons
+        # Creating the Create and Close buttons
         self.frame2 = Frame(self)
         self.frame2.pack(padx=5, pady=5)
 
@@ -192,38 +210,24 @@ class ClientScreen(Frame):
         self.CloseButton = Button(self.frame2, text="Close", command=self.master.destroy, width=10, height=1)
         self.CloseButton.pack(padx=40, pady=20, side=LEFT)
 
+
     def handleCreateReport(self):
-        # Initialize the list to store the report lines
-        report_lines = []
+       # Check which report option is selected and send the msg to server
+       if self.chosenReport.get() == "What is the most bought item?":
+           clientMsg = "report1"
+       elif self.chosenReport.get() == "Which store has the highest number of operations?":
+           clientMsg = "report2"
+       elif self.chosenReport.get() == "What is the total generated income of the store?":
+           clientMsg = "report3"
+       else:
+           clientMsg = "report4"
+       # Communicate with the server
+       self.clientSocket.send(clientMsg.encode())
+       serverMsg = self.clientSocket.recv(1024).decode()
+       report = serverMsg.split(";")[1:]
 
-        # Check which report option is selected and send the msg to server
-        if self.chosenReport.get() == "What is the most bought item?":
-            clientMsg = "report1"
-            self.clientSocket.send(clientMsg.encode())
-            serverMsg = self.clientSocket.recv(1024).decode()
-            report = serverMsg.split(";")[1:]
-
-        elif self.chosenReport.get() == "Which store has the highest number of operations?":
-            clientMsg = "report2"
-            self.clientSocket.send(clientMsg.encode())
-            serverMsg = self.clientSocket.recv(1024).decode()
-            report = serverMsg.split(";")[1:]
-
-        elif self.chosenReport.get() == "What is the total generated income of the store?":
-            clientMsg = "report3"
-            self.clientSocket.send(clientMsg.encode())
-            serverMsg = self.clientSocket.recv(1024).decode()
-            report = serverMsg.split(";")[1:]
-
-        else:
-            clientMsg = "report4"
-            self.clientSocket.send(clientMsg.encode())
-            serverMsg = self.clientSocket.recv(1024).decode()
-            report = serverMsg.split(";")[1:]
-
-        # Display the message box with the gathered report lines
-        messagebox.showinfo("Report", ", ".join(report))
-
+       # Display the message box
+       messagebox.showinfo("Report", ", ".join(report))
 
 def connectToServer(host, port):
     try:

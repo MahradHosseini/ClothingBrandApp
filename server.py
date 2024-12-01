@@ -270,6 +270,7 @@ class ClientThread(Thread):
             itemData = item.strip().split(";")
             if itemData[1] == "Basic T-shirt":
                 basicTShirtID = itemData[0]
+                break
 
         returnsCount = {"red": 0, "black": 0}
 
@@ -279,7 +280,6 @@ class ClientThread(Thread):
                 for item in returnedItems:
                     quantity, itemID, color = item.split("-")
                     quantity = int(quantity)
-
                     if itemID == basicTShirtID:
                         returnsCount[color] += quantity
 
