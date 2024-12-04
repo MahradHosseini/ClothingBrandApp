@@ -159,7 +159,7 @@ class ClientScreen(Frame):
 
     def handleReturn(self):
         selectedItems = self.getSelectedItems()
-
+        # Prepare the message to be sent to the server
         if selectedItems:
             store = self.username
             customerName = self.customerEntry.get()
@@ -169,9 +169,10 @@ class ClientScreen(Frame):
             clientMsg = f"return;{store};{totalQuantity};{','.join(selectedItems)};{customerName}"
             self.clientSocket.send(clientMsg.encode())
         else:
+            # Show error message if no item is selected
             messagebox.showerror("No Items Selected", "No items selected")
             return
-
+        # Receive message from the server
         serverMsg = self.clientSocket.recv(1024).decode().split(";")
 
         if serverMsg[0] == "returnsuccess":
@@ -181,6 +182,7 @@ class ClientScreen(Frame):
 
 
     def showAnalystPanel(self):
+        # Destroy the previous GUI
         for widget in self.winfo_children():
             widget.destroy()
 
@@ -191,6 +193,7 @@ class ClientScreen(Frame):
 
         self.Label1 = Label(self.frame1, text="Reports", font=("Arial", 20))
         self.Label1.pack(padx=5, pady=10)
+
         # Creating the report options
         report_options = [
             "What is the most bought item?",
@@ -201,11 +204,12 @@ class ClientScreen(Frame):
         self.chosenReport = StringVar()
         self.chosenReport.set(report_options[0])
 
+        # Create the radio buttons
         for report in report_options:
             aButton = Radiobutton(self.frame1, text=report, variable=self.chosenReport, value=report)
             aButton.pack(padx=5, pady=5, anchor="w")
 
-        # Creating the Create and Close buttons
+        # Create the 'Create' and 'Close' buttons
         self.frame2 = Frame(self)
         self.frame2.pack(padx=5, pady=5)
 
@@ -226,6 +230,7 @@ class ClientScreen(Frame):
            clientMsg = "report3"
        else:
            clientMsg = "report4"
+
        # Communicate with the server
        self.clientSocket.send(clientMsg.encode())
        serverMsg = self.clientSocket.recv(1024).decode()
