@@ -1,4 +1,15 @@
-purchase;dereboyucd1;cem;1-1-red;1-6-black
+purchase;dereboyucd1;cem;1-1-red,1-6-black
 purchase;magusa3;balduran;3-2-black
 purchase;magusa3;vyse;1-4-red
 return;magusa3;vyse;1-4-red
+purchase;magusa3;Mahrad;1-1-red
+return;magusa3;Mahrad;1-1-red
+purchase;magusa3;Mahrad;1-1-black
+return;magusa3;Mahrad;1-1-black
+purchase;magusa3;Mahrad;1-3-red
+purchase;magusa3;Mahrad;1-3-red
+purchase;magusa3;Mahrad;1-4-red
+purchase;magusa3;Mahrad;1-4-red
+return;magusa3;Mahrad;1-3-red
+purchase;magusa3;Mahrad;1-3-red,1-4-red
+return;magusa3;Mahrad;1-3-red,1-4-red

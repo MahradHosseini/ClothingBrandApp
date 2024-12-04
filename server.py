@@ -23,7 +23,6 @@ class ClientThread(Thread):
             with open("users.txt", "r") as file:
                 for line in file:
                     lineData = line.strip().split(";")
-                    print(lineData)
                     if username == lineData[0] and password == lineData[1]:
                         # Login approval format: loginsuccess;username;role
                         serverMsg = f"loginsuccess;{username};{lineData[2]}"
@@ -37,11 +36,11 @@ class ClientThread(Thread):
 
     @staticmethod
     def purchaseCommand(clientMsg):
-        # Purchase format: purchase;store;total;quantity-itemID-color, quantity-itemID-color...
+        # Purchase format: purchase;store;totalQuantity;quantity-itemID-color, quantity-itemID-color...;customerName
         # Items.txt format: itemID;itemName;color;price;stockAvailable
         with fileLock:
             with open("items.txt", "r") as file:
-                order = clientMsg.split(";")[-1]
+                order = clientMsg.split(";")[-2]
                 suborders = order.split(",")
                 availableItems = []
                 unavailableItems = []
@@ -54,7 +53,7 @@ class ClientThread(Thread):
                 quantity = int(quantity)
 
                 for line in lines:
-                    lineData = line.split(";")
+                    lineData = line.strip().split(";")
 
                     if itemID == lineData[0] and color == lineData[2] and quantity <= int(lineData[4]):
                         suborderAvailable = True
@@ -62,7 +61,12 @@ class ClientThread(Thread):
                         break
 
                 if not suborderAvailable:
-                    unavailableItems.append(f"{lineData[1]} ({color})")
+                    for line in lines:
+                        lineData = line.strip().split(";")
+                        if itemID == lineData[0]:
+                            itemName = lineData[1]
+                            break
+                    unavailableItems.append(f"{itemName} ({color})")
 
             if unavailableItems:
                 serverMsg = "availabilityerror;" + ";".join(unavailableItems)
@@ -83,7 +87,9 @@ class ClientThread(Thread):
 
                 with open("operations.txt", "a") as file:
                     # Purchase Op Format: purchase;store;customerName;quantity-itemID-color,quantity-itemID-color...
-                    file.write(clientMsg + "\n")
+                    clientMsgData = clientMsg.split(";")
+                    operationString = f"{clientMsgData[0]};{clientMsgData[1]};{clientMsgData[-1]};{clientMsgData[3]}"
+                    file.write(operationString + "\n")
 
                 serverMsg = f"purchasesuccess;{totalOrderCost}"
 
@@ -93,13 +99,13 @@ class ClientThread(Thread):
     def returnCommand(clientMsg):
         # TODO: Check the functionality of this method after implementing the "handleReturn()" in client.py
 
-        # Format: return;store;customerName;quantity-itemID-color,quantity-itemID-color...
+        # Format: return;store;totalQuantity;quantity-itemID-color,quantity-itemID-color...;customerName
         # Items.txt format: itemID;itemName;color;price;stockAvailable
         # Operations.txt format: purchase;store;customerName;quantity-itemID-color,... or return;store;customerName;quantity-itemID-color,...
         returnReq = clientMsg.split(";")
         store = returnReq[1]
-        customerName = returnReq[2]
-        returnItems = returnReq[3].split(",")
+        customerName = returnReq[-1]
+        returnItems = returnReq[-2].split(",")
 
         with fileLock:
             with open("operations.txt", "r") as operationsFile:
@@ -146,7 +152,8 @@ class ClientThread(Thread):
                     itemsFile.write("\n".join(updatedItems) + "\n")
 
                 with open("operations.txt", "a") as operationsFile:
-                    operationsFile.write(clientMsg + "\n")
+                    operationString = f"{returnReq[0]};{returnReq[1]};{returnReq[-1]};{returnReq[3]}"
+                    operationsFile.write(operationString + "\n")
 
                 serverMsg = "returnsuccess"
 
@@ -288,7 +295,7 @@ class ClientThread(Thread):
             mostReturnedColors = [color for color, count in returnsCount.items() if count == maxReturns]
             serverMsg = f"report4;{';'.join(mostReturnedColors)}"
         else:
-            serverMsg = "report4;No sales"
+            serverMsg = "report4;No returns"
 
         return serverMsg
 

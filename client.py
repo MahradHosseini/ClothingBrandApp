@@ -140,7 +140,10 @@ class ClientScreen(Frame):
         if selectedItems:
             store = self.username
             customerName = self.customerEntry.get()
-            clientMsg = f"purchase;{store};{customerName};{','.join(selectedItems)}"
+            totalQuantity = 0
+            for item in selectedItems:
+                totalQuantity += int(item.split("-")[0])
+            clientMsg = f"purchase;{store};{totalQuantity};{','.join(selectedItems)};{customerName}"
             print(clientMsg)
 
             self.clientSocket.send(clientMsg.encode())
@@ -161,7 +164,10 @@ class ClientScreen(Frame):
         if selectedItems:
             store = self.username
             customerName = self.customerEntry.get()
-            clientMsg = f"return;{store};{customerName};{';'.join(selectedItems)}"
+            totalQuantity = 0
+            for item in selectedItems:
+                totalQuantity += int(item.split("-")[0])
+            clientMsg = f"return;{store};{totalQuantity};{','.join(selectedItems)};{customerName}"
             self.clientSocket.send(clientMsg.encode())
         else:
             messagebox.showerror("No Items Selected", "No items selected")
@@ -227,7 +233,7 @@ class ClientScreen(Frame):
        report = serverMsg.split(";")[1:]
 
        # Display the message box
-       messagebox.showinfo("Report", ", ".join(report))
+       messagebox.showinfo("Report", "\n".join(report))
 
 def connectToServer(host, port):
     try:
