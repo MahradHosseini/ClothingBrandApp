@@ -144,7 +144,6 @@ class ClientScreen(Frame):
             for item in selectedItems:
                 totalQuantity += int(item.split("-")[0])
             clientMsg = f"purchase;{store};{totalQuantity};{','.join(selectedItems)};{customerName}"
-            print(clientMsg)
 
             self.clientSocket.send(clientMsg.encode())
         else:

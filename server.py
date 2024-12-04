@@ -2,7 +2,7 @@ from socket import *
 from threading import *
 from threading import RLock
 
-fileLock = RLock()
+fileLock = RLock() # Using RLock mechanism to avoid race conditions
 
 class ClientThread(Thread):
     def __init__(self, clientSocket, clientAddress):
@@ -10,7 +10,11 @@ class ClientThread(Thread):
         self.clientSocket = clientSocket
         self.clientAddress = clientAddress
 
-
+    '''
+        Method responsible for authenticating the users
+        Takes client's message
+        Returns a message to be sent to the client
+    '''
     @staticmethod
     def loginCommand(clientMsg):
         # Client's login message format: login;username;password
@@ -19,6 +23,7 @@ class ClientThread(Thread):
         password = clientMsg.split(";")[2]
         authenticationSuccessful = False
 
+        # Gaining the lock
         with fileLock:
             with open("users.txt", "r") as file:
                 for line in file:
@@ -34,19 +39,25 @@ class ClientThread(Thread):
 
         return serverMsg
 
+    '''
+        Method responsible for validating purchase request, updating the items.txt, and operations.txt if necessary
+        Takes client's message
+        Returns a message to be sent to the client
+    '''
     @staticmethod
     def purchaseCommand(clientMsg):
         # Purchase format: purchase;store;totalQuantity;quantity-itemID-color, quantity-itemID-color...;customerName
         # Items.txt format: itemID;itemName;color;price;stockAvailable
         with fileLock:
             with open("items.txt", "r") as file:
-                order = clientMsg.split(";")[-2]
-                suborders = order.split(",")
-                availableItems = []
-                unavailableItems = []
-
                 lines = file.readlines()
 
+            order = clientMsg.split(";")[-2]
+            suborders = order.split(",")
+
+            # Separating available and unavailable items
+            availableItems = []
+            unavailableItems = []
             for suborder in suborders:
                 suborderAvailable = False
                 quantity, itemID, color = suborder.split("-")
@@ -70,10 +81,11 @@ class ClientThread(Thread):
 
             if unavailableItems:
                 serverMsg = "availabilityerror;" + ";".join(unavailableItems)
-            else:
+            else: # If there's no unavailable items requested then proceeds to here
                 updatedItems = []
                 totalOrderCost = 0
 
+                # Preparing the updated items list plus calculating the total order cost
                 for line in lines:
                     lineData = line.strip().split(";")
                     for item, qty in availableItems:
@@ -82,9 +94,11 @@ class ClientThread(Thread):
                             totalOrderCost += qty * int(item[3])
                     updatedItems.append(";".join(lineData))
 
+                # Writing the updated items list to the items.txt
                 with open("items.txt", "w") as file:
                     file.write("\n".join(updatedItems) + "\n")
 
+                # Adding the operation to the operations.txt
                 with open("operations.txt", "a") as file:
                     # Purchase Op Format: purchase;store;customerName;quantity-itemID-color,quantity-itemID-color...
                     clientMsgData = clientMsg.split(";")
@@ -95,10 +109,13 @@ class ClientThread(Thread):
 
         return serverMsg
 
+    '''
+        Method responsible for validating return request, updating the items.txt, and operations.txt if necessary
+        Takes client's message
+        Returns a message to be sent to the client
+    '''
     @staticmethod
     def returnCommand(clientMsg):
-        # TODO: Check the functionality of this method after implementing the "handleReturn()" in client.py
-
         # Format: return;store;totalQuantity;quantity-itemID-color,quantity-itemID-color...;customerName
         # Items.txt format: itemID;itemName;color;price;stockAvailable
         # Operations.txt format: purchase;store;customerName;quantity-itemID-color,... or return;store;customerName;quantity-itemID-color,...
@@ -111,6 +128,7 @@ class ClientThread(Thread):
             with open("operations.txt", "r") as operationsFile:
                 operations = operationsFile.readlines()
 
+            # Checking to see if the items that are going to be returned, had been bought by the same customer before
             validReturn = True
             for item in returnItems:
                 quantity, itemID, color = item.split("-")
@@ -133,10 +151,11 @@ class ClientThread(Thread):
 
             if not validReturn:
                 serverMsg = "returnerror"
-            else:
+            else: # If the return request is valid, proceeds to here
                 with open("items.txt", "r") as itemsFile:
                     items = itemsFile.readlines()
 
+                # Returning the returned items to the stock
                 updatedItems = []
                 for line in items:
                     itemData = line.strip().split(";")
@@ -151,6 +170,7 @@ class ClientThread(Thread):
                 with open("items.txt", "w") as itemsFile:
                     itemsFile.write("\n".join(updatedItems) + "\n")
 
+                # Adding the return operation to the operations.txt
                 with open("operations.txt", "a") as operationsFile:
                     operationString = f"{returnReq[0]};{returnReq[1]};{returnReq[-1]};{returnReq[3]}"
                     operationsFile.write(operationString + "\n")
@@ -159,17 +179,18 @@ class ClientThread(Thread):
 
         return serverMsg
 
+    '''
+        Method responsible for generating report one (Most bought item/s)
+        Returns a message to be sent to the client
+    '''
     @staticmethod
     def reportOne():
-        # TODO: Check the functionality of this method after implementing the "handleCreateReport()" and "showAnalystPanel()" in client.py
-
-        # Most bought item/s?
         with fileLock:
             with open("operations.txt", "r") as operationsFile:
                 operations = operationsFile.readlines()
 
+            # Counting all the sold items and keeping them in a dict
             purchaseCounts = {}
-
             for operation in operations:
                 if operation.startswith("purchase"):
                     purchaseItems = operation.strip().split(";")[3].split(",")
@@ -181,10 +202,11 @@ class ClientThread(Thread):
                             purchaseCounts[itemID] = 0
                         purchaseCounts[itemID] += quantity
 
-
+            # Extracting the most bought item/s from the dict
             maxCount = max(purchaseCounts.values())
             mostBoughtItems = [itemID for itemID, count in purchaseCounts.items() if count == maxCount]
 
+            # Extracting the names of the items from their IDs
             with open("items.txt", "r") as itemsFile:
                 itemsData = itemsFile.readlines()
 
@@ -199,11 +221,12 @@ class ClientThread(Thread):
 
         return serverMsg
 
+    '''
+        Method responsible for generating report two (Store/s with the highest number of operations)
+        Returns a message to be sent to the client
+    '''
     @staticmethod
     def reportTwo():
-        # TODO: Check the functionality of this method after implementing the "handleCreateReport()" and "showAnalystPanel()" in client.py
-
-        # Store/s with the highest number of operations
         with fileLock:
             with open("operations.txt", "r") as operationsFile:
                 operations = operationsFile.readlines()
@@ -223,11 +246,12 @@ class ClientThread(Thread):
         serverMsg = f"report2;{';'.join(topStores)}"
         return serverMsg
 
+    '''
+        Method responsible for generating report three (Total generated income)
+        Returns a message to be sent to the client
+    '''
     @staticmethod
     def reportThree():
-        # TODO: Check the functionality of this method after implementing the "handleCreateReport()" and "showAnalystPanel()" in client.py
-
-        # Total generated income
         with fileLock:
             with open("operations.txt", "r") as operationsFile:
                 operations = operationsFile.readlines()
@@ -262,11 +286,12 @@ class ClientThread(Thread):
         serverMsg = f"report3;{totalIncome}"
         return serverMsg
 
+    '''
+        Method responsible for generating report four (Most returned color for Basic T-shirt)
+        Returns a message to be sent to the client
+    '''
     @staticmethod
     def reportFour():
-        # TODO: Check the functionality of this method after implementing the "handleCreateReport()" and "showAnalystPanel()" in client.py
-
-        # Most returned color for Basic T-shirt
         with fileLock:
             with open("operations.txt", "r") as operationsFile:
                 operations = operationsFile.readlines()
@@ -299,6 +324,9 @@ class ClientThread(Thread):
 
         return serverMsg
 
+    '''
+        Overridden Run method responsible for reading the client's request and refer it to the correct function
+    '''
     def run(self):
         try:
             serverMsg = "connectionsuccess".encode()
@@ -335,7 +363,6 @@ class ClientThread(Thread):
                     serverMsg = "unknowncommand"
                     print(f"Unknown command received: {clientMsg}")
 
-                print(serverMsg)
                 self.clientSocket.send(serverMsg.encode())
 
         except Exception as e:
@@ -344,6 +371,7 @@ class ClientThread(Thread):
         finally:
             self.clientSocket.close()
             print(f"Connection closed with {self.clientAddress}")
+
 
 if __name__ == "__main__":
     HOST = "127.0.0.1"
@@ -356,6 +384,7 @@ if __name__ == "__main__":
 
     print("Server is running....")
 
+    # Accepting new clients and referring them to a new thread
     try:
         while True:
             clientSocket, clientAddress = serverSocket.accept()
@@ -363,8 +392,9 @@ if __name__ == "__main__":
             newClient = ClientThread(clientSocket, clientAddress)
             newClient.start()
 
-    except KeyboardInterrupt:
-        print("Server is shutting down...")
+    except Exception as e:
+        print(f"Error occurred during connection: {e}")
 
+    # Making sure that the socket is closed properly at the end
     finally:
         serverSocket.close()
