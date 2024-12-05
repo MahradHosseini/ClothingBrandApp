@@ -4,24 +4,34 @@ from tkinter import messagebox
 
 
 class ClientScreen(Frame):
+    """
+       Method responsible for initializing client screen
+       Takes in client socket
+   """
+
     def __init__(self, clientSocket):
         Frame.__init__(self)
         self.pack()
         self.username = None
         self.clientSocket = clientSocket
 
+        # Centering the screen
         width, height = 600, 300
         screenWidth, screenHeight = self.master.winfo_screenwidth(), self.master.winfo_screenheight()
-
         x = (screenWidth - width) // 2
         y = (screenHeight - height) // 2
-
         self.master.geometry(f"{width}x{height}+{x}+{y}")
 
+        # Making the screen scalable
         self.master.rowconfigure(0, weight=1)
         self.master.columnconfigure(0, weight=1)
 
+        # Showing login screen
         self.showLoginScreen()
+
+    """
+       Method responsible for showing login screen
+    """
 
     def showLoginScreen(self):
         self.master.title("Login")
@@ -33,24 +43,29 @@ class ClientScreen(Frame):
             self.columnconfigure(j, weight=1)
 
         usernameLabel = Label(self, text="Username:")
-        usernameLabel.grid(row=0, column=0,sticky="se")
+        usernameLabel.grid(row=0, column=0, sticky="se")
 
         self.usernameEntry = Entry(self)
-        self.usernameEntry.grid(row=0, column=1,sticky="sw",padx=8)
-        self.usernameEntry.bind("<Return>", lambda event: self.handleLogin())
+        self.usernameEntry.grid(row=0, column=1, sticky="sw", padx=8)
+        self.usernameEntry.bind("<Return>", lambda event: self.handleLogin())  # Binding it with "Enter" key
 
         passwordLabel = Label(self, text="Password:")
-        passwordLabel.grid(row=1, column=0,sticky="e")
+        passwordLabel.grid(row=1, column=0, sticky="e")
 
         self.passwordEntry = Entry(self, show="*")
-        self.passwordEntry.grid(row=1, column=1,sticky="w",padx=8)
+        self.passwordEntry.grid(row=1, column=1, sticky="w", padx=8)
         self.passwordEntry.bind("<Return>", lambda event: self.handleLogin())
 
         loginButton = Button(self, text="Login", command=self.handleLogin, width=10, height=1)
-        loginButton.grid(row=2, column=0, columnspan=2,sticky="n")
+        loginButton.grid(row=2, column=0, columnspan=2, sticky="n")
 
+        # Setting min and max screen sizes
         self.master.minsize(400, 300)
         self.master.maxsize(800, 400)
+
+    """
+       Method responsible for handling login process, and referring the user to the appropriate screen
+    """
 
     def handleLogin(self):
         clientMsg = f"login;{self.usernameEntry.get()};{self.passwordEntry.get()}".encode()
@@ -60,7 +75,7 @@ class ClientScreen(Frame):
 
         if serverMsg == "loginfailure":
             messagebox.showerror("Login failure", "Login failure")
-        else:
+        else:  # If the authentication is successful will proceed to here
             self.username = serverMsg.split(";")[1]
             role = serverMsg.split(";")[-1]
             if role == "store":
@@ -68,7 +83,12 @@ class ClientScreen(Frame):
             elif role == "analyst":
                 self.showAnalystPanel()
 
+    """
+       Method responsible for showing store panel screen
+    """
+
     def showStorePanel(self):
+        # Destroy the previous GUI
         for widget in self.winfo_children():
             widget.destroy()
 
@@ -77,14 +97,16 @@ class ClientScreen(Frame):
         itemsLabel = Label(self, text="Items", font=("Arial", 20))
         itemsLabel.grid(row=0, column=0, columnspan=2)
 
+        # List of available items (had to hard-code it as the client doesn't have access to the items.txt)
         self.items = ["Basic T-shirt", "Leather Jacket", "Robe of the Weave",
                       "Plaid Shirt", "D4C Graphic T-shirt",
                       "Denim Jeans", "Hodd-Toward Designer Shorts"]
 
+        # Dynamically generating the panel's widgets along with storing their radio button, quantity entry, and color button
+        # in relative dicts
         self.itemVars = {}
         self.quantityEntries = {}
         self.colorVars = {}
-
         for i, item in enumerate(self.items, start=1):
             # The items' checkboxes
             itemVar = BooleanVar()
@@ -96,7 +118,7 @@ class ClientScreen(Frame):
             quantityLabel = Label(self, text="Quantity:")
             quantityLabel.grid(row=i, column=1, sticky=E, padx=10)
             quantityEntry = Entry(self, width=10)
-            quantityEntry.grid(row=i, column=2, sticky=W,padx=10)
+            quantityEntry.grid(row=i, column=2, sticky=W, padx=10)
             self.quantityEntries[item] = quantityEntry
 
             # Color buttons
@@ -105,18 +127,18 @@ class ClientScreen(Frame):
             colorVar = StringVar(value="red")
             redRadio = Radiobutton(self, text="Red", variable=colorVar, value="red")
             blackRadio = Radiobutton(self, text="Black", variable=colorVar, value="black")
-            redRadio.grid(row=i, column=3,sticky="e")
-            blackRadio.grid(row=i, column=4,padx=10)
+            redRadio.grid(row=i, column=3, sticky="e")
+            blackRadio.grid(row=i, column=4, padx=10)
             self.colorVars[item] = colorVar
 
         customerLabel = Label(self, text="Customer Name:")
-        customerLabel.grid(row=len(self.items) + 1, column=0, columnspan=2, padx=10,sticky="e")
+        customerLabel.grid(row=len(self.items) + 1, column=0, columnspan=2, padx=10, sticky="e")
 
         self.customerEntry = Entry(self, width=15)
         self.customerEntry.grid(row=len(self.items) + 1, column=1, columnspan=2, sticky="e")
 
         purchaseButton = Button(self, text="Purchase", command=self.handlePurchase, width=10, height=1)
-        purchaseButton.grid(row=len(self.items) + 2, column=0, pady=10, padx=10,sticky="e")
+        purchaseButton.grid(row=len(self.items) + 2, column=0, pady=10, padx=10, sticky="e")
 
         returnButton = Button(self, text="Return", command=self.handleReturn, width=10, height=1)
         returnButton.grid(row=len(self.items) + 2, column=1, pady=10, padx=10)
@@ -124,15 +146,24 @@ class ClientScreen(Frame):
         closeButton = Button(self, text="Close", command=self.master.destroy, width=10, height=1)
         closeButton.grid(row=len(self.items) + 2, column=3, pady=10, padx=10)
 
+    """
+       Method responsible for retrieving selected items from the UI
+       Returns list of selected items
+    """
+
     def getSelectedItems(self):
         selectedItems = []
         for i, item in enumerate(self.items, start=1):
-            if self.itemVars[item].get():
+            if self.itemVars[item].get():  # Checking to see if the button is selected
                 quantity = self.quantityEntries[item].get()
                 color = self.colorVars[item].get()
-                if quantity.isdigit() and int(quantity) > 0:
+                if quantity.isdigit() and int(quantity) > 0:  # Also the quantity should be entered
                     selectedItems.append(f"{quantity}-{i}-{color}")
         return selectedItems
+
+    """
+       Method responsible for handling purchase button, and communicating it with the server
+    """
 
     def handlePurchase(self):
         selectedItems = self.getSelectedItems()
@@ -157,6 +188,10 @@ class ClientScreen(Frame):
         else:
             messagebox.showerror("Availability Error", f"Following items not available:\n" + "\n".join(serverMsg[1:]))
 
+    """
+       Method responsible for handling the return button, and communicating it with the server
+    """
+
     def handleReturn(self):
         selectedItems = self.getSelectedItems()
         # Prepare the message to be sent to the server
@@ -180,6 +215,9 @@ class ClientScreen(Frame):
         else:
             messagebox.showerror("Message", "unsuccessful operation – please recheck the items")
 
+    """
+       Method responsible for showing analyst panel screen
+    """
 
     def showAnalystPanel(self):
         # Destroy the previous GUI
@@ -219,25 +257,33 @@ class ClientScreen(Frame):
         self.CloseButton = Button(self.frame2, text="Close", command=self.master.destroy, width=10, height=1)
         self.CloseButton.pack(padx=40, pady=20, side=LEFT)
 
+    """
+       Method responsible for create report button, and communicating it with the server
+    """
 
     def handleCreateReport(self):
-       # Check which report option is selected and send the msg to server
-       if self.chosenReport.get() == "What is the most bought item?":
-           clientMsg = "report1"
-       elif self.chosenReport.get() == "Which store has the highest number of operations?":
-           clientMsg = "report2"
-       elif self.chosenReport.get() == "What is the total generated income of the store?":
-           clientMsg = "report3"
-       else:
-           clientMsg = "report4"
+        # Check which report option is selected and send the msg to server
+        if self.chosenReport.get() == "What is the most bought item?":
+            clientMsg = "report1"
+        elif self.chosenReport.get() == "Which store has the highest number of operations?":
+            clientMsg = "report2"
+        elif self.chosenReport.get() == "What is the total generated income of the store?":
+            clientMsg = "report3"
+        else:
+            clientMsg = "report4"
 
-       # Communicate with the server
-       self.clientSocket.send(clientMsg.encode())
-       serverMsg = self.clientSocket.recv(1024).decode()
-       report = serverMsg.split(";")[1:]
+        # Communicate with the server
+        self.clientSocket.send(clientMsg.encode())
+        serverMsg = self.clientSocket.recv(1024).decode()
+        report = serverMsg.split(";")[1:]
 
-       # Display the message box
-       messagebox.showinfo("Report", "\n".join(report))
+        # Display the message box
+        messagebox.showinfo("Report", "\n".join(report))
+
+
+"""
+   Method responsible for establishing connection to the server
+"""
 
 def connectToServer(host, port):
     try:

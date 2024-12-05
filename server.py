@@ -2,7 +2,8 @@ from socket import *
 from threading import *
 from threading import RLock
 
-fileLock = RLock() # Using RLock mechanism to avoid race conditions
+fileLock = RLock()  # Using RLock mechanism to avoid race conditions
+
 
 class ClientThread(Thread):
     def __init__(self, clientSocket, clientAddress):
@@ -10,11 +11,12 @@ class ClientThread(Thread):
         self.clientSocket = clientSocket
         self.clientAddress = clientAddress
 
-    '''
+    """
         Method responsible for authenticating the users
         Takes client's message
         Returns a message to be sent to the client
-    '''
+    """
+
     @staticmethod
     def loginCommand(clientMsg):
         # Client's login message format: login;username;password
@@ -39,11 +41,12 @@ class ClientThread(Thread):
 
         return serverMsg
 
-    '''
+    """
         Method responsible for validating purchase request, updating the items.txt, and operations.txt if necessary
         Takes client's message
         Returns a message to be sent to the client
-    '''
+    """
+
     @staticmethod
     def purchaseCommand(clientMsg):
         # Purchase format: purchase;store;totalQuantity;quantity-itemID-color, quantity-itemID-color...;customerName
@@ -81,7 +84,7 @@ class ClientThread(Thread):
 
             if unavailableItems:
                 serverMsg = "availabilityerror;" + ";".join(unavailableItems)
-            else: # If there's no unavailable items requested then proceeds to here
+            else:  # If there's no unavailable items requested then proceeds to here
                 updatedItems = []
                 totalOrderCost = 0
 
@@ -109,11 +112,12 @@ class ClientThread(Thread):
 
         return serverMsg
 
-    '''
+    """
         Method responsible for validating return request, updating the items.txt, and operations.txt if necessary
         Takes client's message
         Returns a message to be sent to the client
-    '''
+    """
+
     @staticmethod
     def returnCommand(clientMsg):
         # Format: return;store;totalQuantity;quantity-itemID-color,quantity-itemID-color...;customerName
@@ -136,11 +140,11 @@ class ClientThread(Thread):
 
                 itemFound = False
                 for operation in operations:
-                    if(
-                        operation.startswith("purchase") and
-                        store in operation and
-                        customerName in operation and
-                        f"{quantity}-{itemID}-{color}" in operation
+                    if (
+                            operation.startswith("purchase") and
+                            store in operation and
+                            customerName in operation and
+                            f"{quantity}-{itemID}-{color}" in operation
                     ):
                         itemFound = True
                         break
@@ -151,7 +155,7 @@ class ClientThread(Thread):
 
             if not validReturn:
                 serverMsg = "returnerror"
-            else: # If the return request is valid, proceeds to here
+            else:  # If the return request is valid, proceeds to here
                 with open("items.txt", "r") as itemsFile:
                     items = itemsFile.readlines()
 
@@ -179,10 +183,11 @@ class ClientThread(Thread):
 
         return serverMsg
 
-    '''
+    """
         Method responsible for generating report one (Most bought item/s)
         Returns a message to be sent to the client
-    '''
+    """
+
     @staticmethod
     def reportOne():
         with fileLock:
@@ -221,18 +226,19 @@ class ClientThread(Thread):
 
         return serverMsg
 
-    '''
+    """
         Method responsible for generating report two (Store/s with the highest number of operations)
         Returns a message to be sent to the client
-    '''
+    """
+
     @staticmethod
     def reportTwo():
         with fileLock:
             with open("operations.txt", "r") as operationsFile:
                 operations = operationsFile.readlines()
 
+        # Storing each store's operations in a dict
         storeOperations = {}
-
         for operation in operations:
             operationParts = operation.strip().split(";")
             store = operationParts[1]
@@ -241,15 +247,17 @@ class ClientThread(Thread):
                 storeOperations[store] = 0
             storeOperations[store] += 1
 
+        # Extracting the store/s with maximum num of operations from the dict
         maxOperations = max(storeOperations.values())
         topStores = [store for store, count in storeOperations.items() if count == maxOperations]
         serverMsg = f"report2;{';'.join(topStores)}"
         return serverMsg
 
-    '''
+    """
         Method responsible for generating report three (Total generated income)
         Returns a message to be sent to the client
-    '''
+    """
+
     @staticmethod
     def reportThree():
         with fileLock:
@@ -258,14 +266,16 @@ class ClientThread(Thread):
             with open("items.txt", "r") as itemsFile:
                 items = itemsFile.readlines()
 
+        # Storing the price of each item (keyed with ID and Color) in a dict
         priceLookup = {}
         for item in items:
             itemData = item.strip().split(";")
             itemID, color, price = itemData[0], itemData[2], int(itemData[3])
             priceLookup[f"{itemID}-{color}"] = price
 
+        # Reading operation history one by one, extracting the key and quantity of items within an operation,
+        # adding the income to total income (or subtracting from it for return operations)
         totalIncome = 0
-
         for operation in operations:
             operationData = operation.strip().split(";")
             operationType = operationData[0]
@@ -286,10 +296,11 @@ class ClientThread(Thread):
         serverMsg = f"report3;{totalIncome}"
         return serverMsg
 
-    '''
+    """
         Method responsible for generating report four (Most returned color for Basic T-shirt)
         Returns a message to be sent to the client
-    '''
+    """
+
     @staticmethod
     def reportFour():
         with fileLock:
@@ -298,14 +309,15 @@ class ClientThread(Thread):
             with open("items.txt", "r") as itemsFile:
                 items = itemsFile.readlines()
 
+        # Extracting the ID of Basic T-shirt for more dynamicality
         for item in items:
             itemData = item.strip().split(";")
             if itemData[1] == "Basic T-shirt":
                 basicTShirtID = itemData[0]
                 break
 
+        # Storing the number of returns for each color in a dict
         returnsCount = {"red": 0, "black": 0}
-
         for operation in operations:
             if operation.startswith("return"):
                 returnedItems = operation.strip().split(";")[3].split(",")
@@ -315,6 +327,7 @@ class ClientThread(Thread):
                     if itemID == basicTShirtID:
                         returnsCount[color] += quantity
 
+        # Extracting the most returned color/s if any
         if any(returnsCount.values()):
             maxReturns = max(returnsCount.values())
             mostReturnedColors = [color for color, count in returnsCount.items() if count == maxReturns]
@@ -327,6 +340,7 @@ class ClientThread(Thread):
     '''
         Overridden Run method responsible for reading the client's request and refer it to the correct function
     '''
+
     def run(self):
         try:
             serverMsg = "connectionsuccess".encode()
@@ -336,8 +350,8 @@ class ClientThread(Thread):
                 if not clientMsg or clientMsg == "close":
                     break
 
+                # Reading the command and initiating the switch mechanism
                 command = clientMsg.split(";")[0]
-
                 if command == "login":
                     serverMsg = self.loginCommand(clientMsg)
 
@@ -368,6 +382,7 @@ class ClientThread(Thread):
         except Exception as e:
             print(f"Error in client thread: {e}")
 
+        # Ensuring proper connection closure
         finally:
             self.clientSocket.close()
             print(f"Connection closed with {self.clientAddress}")
