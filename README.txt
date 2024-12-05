@@ -11,12 +11,21 @@ Python Version:
 Developed in:
 Microsoft Windows
 
-
 Task Distribution:
-	Haya:
+    Mahrad:
+        Server Side: Login
+        Server Side: Store Panel - Purchase
+        Server Side: Store Panel - Return
+        Server Side: Thread Synchronization
+        Client Side: Login Window and transfer to an appropriate panel
 
-	Mahrad:
-
+    Haya:
+        Server Side: Analyst Panel - Report 1
+        Server Side: Analyst Panel - Report 2
+        Server Side: Analyst Panel - Report 3
+        Server Side: Analyst Panel - Report 4
+        Client Side: Store Panel
+        Client Side: Analyst Panel
 
 Means of Communication:
 	- GitHub for storing and sharing source files
